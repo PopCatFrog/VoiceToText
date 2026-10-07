@@ -61,11 +61,11 @@ def create_notebook():
     add_code("""# 1. 檢查 GPU 資源
 !nvidia-smi
 
-# 2. 更新系統 ffmpeg (用於音訊重採樣與動態增益濾波)
-!apt-get update -qq && apt-get install -y ffmpeg
+# 2. 確認系統 ffmpeg (Colab 已內建，若缺少則自動安裝)
+!which ffmpeg > /dev/null || (apt-get update -qq && apt-get install -y -qq ffmpeg)
 
-# 3. 安裝 FunASR 及相關依賴 (同步更新 torchvision 避免 PyTorch C++ 算子相容性問題)
-!pip install -q -U "funasr>=1.1.0" modelscope torchvision soundfile librosa
+# 3. 安裝 FunASR 及音訊依賴 (指定 decorator<5.0 與 jedi 避免 Colab 既有套件版本衝突)
+!pip install -q "funasr>=1.1.0" modelscope soundfile librosa "decorator<5.0" jedi
 print("✅ 環境與套件安裝完成！")""")
 
     # Step 2
@@ -196,7 +196,11 @@ print(cleaned_hotwords if cleaned_hotwords else "(未設定熱詞)")""")
 - **`spk_model="cam++"`**：聲紋特徵抽取與聚類模型（區分講師與學生）
 """)
 
-    add_code("""from funasr import AutoModel
+    add_code("""import sys
+# 💡 阻斷 torchvision 載入以避免 C++ 算子版本相容性問題 (FunASR 語音辨識與聲紋模型完全不需要視覺庫)
+sys.modules['torchvision'] = None
+
+from funasr import AutoModel
 import torch
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
